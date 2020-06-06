@@ -1,0 +1,34 @@
+---
+- name: install dns and dhcp
+  hosts: all
+  tasks:
+  - name: install dhcp and dns
+    win_shell: Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+  
+  - name: Install forest for Domain
+    win_shell: Install-ADDSForest -DomainName “www.mydomain.com”
+
+  - name: Install DNS
+    win_shell: Install-WindowsFeature DNS -IncludeManagementTools
+
+  - name: Add dns serve
+    win_shell: Add-DnsServerPrimaryZone -NetworkID 192.168.64.0/24 -ZoneFile "18.189.152.123.in-addr.arpa.dns"
+  
+  - name: add dns forward
+    win_shell: Add-DnsServerForwarder -IPAddress 8.8.8.8 -PassThru
+  
+  - name: Install DHCP    
+    win_shell: Install-WindowsFeature DHCP -IncludeManagementTools
+    
+  - name: set DHCP scope range
+    win_shell: Add-DHCPServerv4Scope -Name “Employee Scope” -StartRange 172.31.24.240 -EndRange 172.31.24.260 -SubnetMask 255.255.255.0 -State Active
+      
+  - name: Set lease
+    win_shell: Set-DhcpServerv4Scope -ScopeId 172.31.24.0 -LeaseDuration 1.00:00:00
+
+  - name: set option value for dhcp server
+    win_shell: Set-DHCPServerv4OptionValue -ScopeID 172.31.24.0 -DnsDomain www.mydomain.com -DnsServer 172.31.24.240 -Router 172.31.24.1
+      
+  - name: add dhcp server to dns
+    win_shell: Add-DhcpServerInDC -DnsName www.mydomain.com -IpAddress 172.31.24.240
+     

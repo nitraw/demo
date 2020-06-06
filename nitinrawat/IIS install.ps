@@ -1,0 +1,102 @@
+#https://weblog.west-wind.com/posts/2017/May/25/Automating-IIS-Feature-Installation-with-Powershell
+
+#Check IIS service status
+
+Get-Service -Name 'IISADMIN'
+
+#Install IIS service
+Install-WindowsFeature -name Web-Server -IncludeManagementTools
+
+#To see all the features available related to IIS you can use:
+Get-WindowsOptionalFeature -Online | where FeatureName -like 'IIS-*'
+
+
+#Additional IIS Features
+choco install webdeploy -y
+choco install urlrewrite -y
+
+# To list all Windows Features: dism /online /Get-Features
+# Get-WindowsOptionalFeature -Online 
+# LIST All IIS FEATURES: 
+
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-CommonHttpFeatures
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpErrors
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpRedirect
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationDevelopment
+
+Enable-WindowsOptionalFeature -online -FeatureName NetFx4Extended-ASPNET45
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-NetFxExtensibility45
+
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HealthAndDiagnostics
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpLogging
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-LoggingLibraries
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestMonitor
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpTracing
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-Security
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-RequestFiltering
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-Performance
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerManagementTools
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-IIS6ManagementCompatibility
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-Metabase
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ManagementConsole
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-BasicAuthentication
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WindowsAuthentication
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-StaticContent
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-DefaultDocument
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationInit
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIExtensions
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ISAPIFilter
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionStatic
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ASPNET45
+
+#Create an IIS Application Pool and Web Site
+Import-Module WebAdministration 
+
+New-WebAppPool -name "NewWebSiteAppPool"  -force
+
+$appPool = Get-Item IIS:\AppPools\NewWebSiteAppPool 
+$appPool.processModel.identityType = "NetworkService"
+$appPool.enable32BitAppOnWin64 = 1
+$appPool | Set-Item
+$appPool.processModel.idleTimeout
+
+New-Item IIS:\AppPools\DemoAppPool
+
+#Then to create a Web Site:
+
+#md "C:\inetpub\NewWebSite"
+
+#Create website
+New-Item IIS:\Sites\DemoSite -physicalPath C:\DemoSite -bindings @{protocol="http";bindingInformation=":8080:"}
+Set-ItemProperty IIS:\Sites\DemoSite -name applicationPool -value DemoAppPool
+New-Item IIS:\Sites\DemoSite\DemoApp -physicalPath C:\DemoSite\DemoApp -type Application
+Set-ItemProperty IIS:\sites\DemoSite\DemoApp -name applicationPool -value DemoAppPool
+New-Item IIS:\Sites\DemoSite\DemoVirtualDir1 -physicalPath C:\DemoSite\DemoVirtualDir1 -type VirtualDirectory
+New-Item IIS:\Sites\DemoSite\DemoApp\DemoVirtualDir2 -physicalPath C:\DemoSite\DemoVirtualDir2 -type VirtualDirectory
+
+#Set Content
+Set-Content C:\DemoSite\Default.htm "DemoSite Default Page"
+Set-Content C:\DemoSite\DemoApp\Default.htm "DemoSite\DemoApp Default Page"
+Set-Content C:\DemoSite\DemoVirtualDir1\Default.htm "DemoSite\DemoVirtualDir1 Default Page"
+Set-Content C:\DemoSite\DemoVirtualDir2\Default.htm "DemoSite\DemoApp\DemoVirtualDir2 Default Page"
+
+#Create new directory
+New-Item C:\DemoSite -type Directory 
+New-Item C:\DemoSite\DemoApp -type Directory
+New-Item C:\DemoSite\DemoVirtualDir1 -type Directory 
+New-Item C:\DemoSite\DemoVirtualDir2 -type Directory 
+
+# All on one line
+
+$site = $site = new-WebSite -name "NewWebSite" 
+                            -PhysicalPath "C:\inetpub\NewWebSite" #-force
+                            -HostHeader "home2.west-wind.com"
+                            -ApplicationPool "NewWebSiteAppPool" 
+                            -force
+$appPool | Set-Item
+
+#Start website
+Start-WebSite -Name "Default Web Site"

@@ -1,0 +1,39 @@
+---
+- name: add local user and group
+  hosts: all
+  vars:
+    password: Aa12
+  gather_facts: false
+  tasks:
+    - name: Get local user name
+      win_shell: Get-LocalUser | Select-Object Name
+      register: users
+
+    - name: show users
+      debug:
+        msg: "{{ users.stdout }}"
+ 
+    - name: add use
+      win_user:
+      name: Rawat
+      password: March@201819 
+      state: present
+    
+    - name: add new user
+      win_shell: password=aaabb New-LocalUser "Rawat" -Password $password -FullName " Rawat Nitin" -Description "CompleteVisibility"
+
+    - name: Password never expires
+      win_shell: Set-LocalUser -Name Rawat –PasswordNeverExpires $False
+    
+    - name: add local group
+      win_shell: New-LocalGroup -Name 'Group1' -Description 'Test Group'
+
+    - name: Add user to local group
+      win_shell: Add-LocalGroupMember -Group 'Group1' -Member ('Rawat') -Verbose
+
+    - name: Delete local user
+      win_shell: Remove-LocalUser -Name Nitin -Verbose
+
+    - name: Remove local group
+      win_shell: Remove-LocalGroupMember -Group 'Netwrix Users' –Member 'guest'
+

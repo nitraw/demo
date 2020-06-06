@@ -1,0 +1,54 @@
+---
+- name: Basic hygeine setup
+  hosts: all
+  tasks:
+  - name: verify the rdp service on system
+    win_shell: $hostname1=hostname
+    win_shell: New-Object System.Net.Sockets.TCPClient -ArgumentList "$hostname1",3389 | select-object Connected
+    register: connection
+
+  - name: Enabling RDP service
+    win_shell: Get-WmiObject Win32_TerminalServiceSetting -Namespace root\cimv2\TerminalServices).SetAllowTsConnections(1,1) | Out-Null
+    win_shell: (Get-WmiObject -Class "Win32_TSGeneralSetting" -Namespace root\cimv2\TerminalServices -Filter "TerminalName='RDP-tcp'").SetUserAuthenticationRequired(0) | Out-Null
+    win_shell:  Get-NetFirewallRule -DisplayName "Remote Desktop*" | Set-NetFirewallRule -enabled true
+    when: connection==true
+
+  - name: Installing telnet-client
+    win_shell: Install-WindowsFeature -Name telnet-client
+
+  - name: Installing snmp
+    win_shell: Install-WindowsFeature -Name RSAT-SNMP
+
+  - name: Applying permission on file
+    win_shell: |
+      $acl = Get-Acl C:\Users\Administrator\testfile1.txt
+      $AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("Raghav","Write","Allow")
+      $acl.SetAccessRule($AccessRule)
+      $acl | Set-Acl 'C:\Users\Administrator\testfile1.txt'
+
+  - name: Blocking External USB access
+    win_shell: Set-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Services\USBSTOR\ -Name start -Value 4
+
+  - name: Checking memory usage in 1 mins interval
+    win_shell: Get-Counter -Counter "\memory\available mbytes" -MaxSamples 1 -SampleInterval 60
+    register: test
+
+  - debug:
+        var: test
+
+  - name: Checking processor after 1 min interval
+    win_shell: $proc =get-counter -Counter "\Processor(_Total)\% Processor Time" -SampleInterval 60
+    win_shell: $cpu=($proc.readings -split ":")[-1]
+    win_shell: $cpu $proc =get-counter -Counter "\Processor(_Total)\% Processor Time" -SampleInterval 2 
+    win_shell: $cpu=($proc.readings -split ":")[-1]
+    win_shell: $cpu
+    register: test1
+
+  - debug:
+         var: test1
+
+  - name: Checking disk space
+    win_shell: Get-Counter -Counter "\memory\available mbytes" -MaxSamples 1 -SampleInterval 600
+    regsiter: test2
+  - debug:
+    var: test2

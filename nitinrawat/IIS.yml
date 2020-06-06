@@ -1,0 +1,54 @@
+---
+- name: install iis and setup website
+  hosts: all
+  tasks:
+  - name: check iis status
+    win_service: 
+      name: Web-Server
+    register: status
+
+  - name: Install IIS
+    win_feature: 
+      name:
+        - Web-Server
+        - Web-Common-Http
+      state: present
+      include_sub_features: True
+      include_management_tools: True
+    when: status.exists == true
+    register: win_feature
+
+  - name: Reboot if installing Web-Server feature requires it
+    debug:
+      msg: "{{win_feature}}"
+  
+    #win_reboot:
+    #when: win_feature.skipped == true
+   
+      #  - name: Check directory exists
+      #stat:
+      #path: /sites/web
+      #register: dir_status
+
+      #  - name: Create a folder
+      #    win_shell: md c:\sites\web
+    #when: dir_status.stat.exists
+    
+      #- name: create html file
+      #win_file: 
+      #path: C:\sites\web\index.html
+      #state: touch
+
+  - name: Create website
+    win_iis_website:
+      name: newweb
+      state: started
+      port: 80
+      ip: 172.31.30.191
+      #hostname: newweb.local
+      application_pool: DefaultAppPool
+      physical_path: C:\sites\web
+      parameters: logfile.directory:C:\sites\logs
+    register: website
+
+  

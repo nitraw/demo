@@ -1,0 +1,21 @@
+---
+- name: Disk Partition 
+  hosts: all
+  gather_facts: no
+  tasks:
+  - name: Create volume
+    win_partition:
+      drive_letter: D
+      partition_size: 1 GiB
+      disk_number: 0
+  
+  - name: format disk
+    win_shell: Format-Volume -DriveLetter D -FileSystem NTFS -Confirm:$false
+
+  - name: Get partition
+    win_shell: Get-Volume
+    register: volume
+
+  - name: show volume
+    debug:
+      msg: "{{ volume.stdout }}"
